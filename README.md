@@ -1,6 +1,6 @@
 ## Ссылки
 
-Ведомость: [TBA](https://github.com/cpp-practice/cpp-public-2324)
+Ведомость: [C++ Results Fall'23](https://docs.google.com/spreadsheets/d/1hShf1ou6mv8mDvOqGl8P8NkWx_2ixKW3-nCUMj_6xqQ/edit#gid=1801190239)
 
 
 ## Описание курса

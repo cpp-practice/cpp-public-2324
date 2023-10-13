@@ -1,6 +1,6 @@
 # Система оценки
 
-Оценки по всем активностям будут выставляться в главную ведомость: [link](https://docs.google.com/spreadsheets/d/1hShf1ou6mv8mDvOqGl8P8NkWx_2ixKW3-nCUMj_6xqQ/edit))
+Оценки по всем активностям будут выставляться в главную ведомость: [link](https://docs.google.com/spreadsheets/d/1hShf1ou6mv8mDvOqGl8P8NkWx_2ixKW3-nCUMj_6xqQ/edit)
 
 ### Летучки
 

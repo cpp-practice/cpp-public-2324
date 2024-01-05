@@ -72,3 +72,52 @@
 11.5 CTAD. Deduction guides
 
 # Seminars
+
+1.1 Сборка программы на C++, компиляция, линковка, флаги
+1.2 Заголовочные файлы: назначения, приемы работы
+
+2.1 assert
+2.2 static_cast, implicit casts
+2.3 Статические Массивы
+2.4 Си-строки: литералы, представление в памяти, функции для работы
+
+3.1 Тонкости ссылок
+3.2 Аргументы функции
+3.3 Дин память, ошибки, санитайзер(-ы)
+3.4 Односвязаный список
+3.5 Singleton
+
+4.1 Типы кастов
+4.2 reinterpret_cast и aliasing
+4.3 Object representation, padding
+4.4 Тип функции, процесс вызова, calling convention
+4.5[*] std::function
+
+5.1 swap-трик
+5.2 rules of N
+5.3 идея copy-on-write
+
+6.1 inheritance + layout
+6.2 std::vector + maps
+6.3 [*] regex
+6.4 вычисление sizeof + учитывание alignment структуры
+
+7.1 C++ cast operators
+7.2 placement new usages
+7.3 union, std::variant
+
+8.1 Частиная специализация: примеры метапрограммирования 
+8.2 STL: containers, iterators (+categories), member examples
+8.3 STL: алгоритмы на итераторах, heap-алгоритмы
+
+9.1 Примеры: категорий значений выражений, ссылок
+9.2 Сравнения методов
+
+10.1 Примеры методов: make_*, emplace*
+10.2 shared_ptr + weak_ptr
+10.3 decay_t
+
+11.1 Вывод типов вне шаблонов
+11.2 std::tuple, get, реализации
+11.3 tuple <-> varidic args
+11.4[*] index sequence

@@ -1,0 +1,610 @@
+= С++
+:icons: font
+:lecture: Лекция 12
+:table-caption!:
+:example-caption!:
+:source-highlighter: highlightjs
+:highlightjs-theme: https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.8.0/build/styles/github.min.css
+:revealjs_hash: true
+:customcss: https://rawcdn.githack.com/fedochet/asciidoc-revealjs-online-converter/7012d6dd12132363bbec8ba4800272ceb6d0a3e6/asciidoc_revealjs_custom_style.css
+:revealjs_theme: white
+:stylesheet: main.css
+:toc:
+:toclevels: 4
+
+== Лекция 12 (ADDITIONAL)
+
+`Lambda expressions. STL functional objects`
+
+== Section 1
+Motivation
+
+=== Motivation example
+
+```c++
+#include <algorithm>
+#include <vector>
+#include <iostream>
+
+struct EvenPrinter {
+    void operator()(int i) const {
+        if (i % 2 == 0) std::cout << i;
+    }
+};
+
+int main() {
+    std::vector<int> v {1,2,3,4,5,6};
+    std::for_each(v.begin(), v.end(), EvenPrinter{});
+}
+```
+
+=== Motivation example
+
+Слишком широкая область видимости, но можно использовать локальный класс:
+
+```c++
+int main() {
+    struct EvenPrinter {
+        void operator()(int i) const {
+            if (i % 2 == 0) std::cout << i;
+        }
+    };
+
+    std::vector<int> v {1,2,3,4,5,6};
+    std::for_each(v.begin(), v.end(), EvenPrinter{});
+}
+```
+
+=== Motivation example
+
+Слишком много не нужного кода, хотелось бы проще -- оставить только параметры и тело, например так:
+
+```c++
+int main() {
+    std::vector<int> v {1,2,3,4,5,6};
+    std::for_each(v.begin(), v.end(),
+        (int i) { std::cout << i; });
+}
+```
+
+
+== Section 2
+
+Lambda expression type, parameters, return type
+
+=== The simplest lambda
+
+```c++
+int main() {
+    []{};
+}
+```
+
+* Тип лямбда выражения скрыт (генерируется компилятором), поэтому для сохранения результата выражения пользуемся `auto`
+* Считаем результат функциональным объектом и пользуемся `operator()` для вызова
+
+=== The simplest lambda
+
+```c++
+int main() {
+    auto lambda = []{};
+    lambda();
+}
+```
+
+Lambda anatomy: https://cppinsights.io/s/432da83e[cppinsights]
+
+=== Simple lambda
+
+```c++
+int main() {
+    auto lambda = [](int param1, double param2 = 3) -> int {
+        return param1 + param2;
+    };
+
+    int(*ptr)(int, double) = lambda;
+
+    std::cout << lambda(1);
+    std::cout << ptr(1, 2.0 /*param2 required*/);
+}
+```
+
+https://cppinsights.io/s/eb38c052[cppinsights]
+
+=== Lambda syntax
+
+ [ captures ] ( params ) -> ret { body }
+ [ captures ] ( params ) { body }
+ [ captures ] { body }
+
+---
+ (*) captures рассмотрим позже
+
+// Посмотреть в cppinsight, что из себя представляет лямбда
+// каст к указателю на функцию
+
+== Section 3
+
+Generic lambda
+
+=== Generic lambda example
+
+```c++
+int main() {
+    auto f = [](auto x, auto& y, auto&& z) {
+        return x + y + z;
+    };
+    int x = 1;
+    f(1, x, 3);
+}
+```
+
+https://cppinsights.io/s/0947c920[cppinsights]
+
+=== Perfect forwarding problem
+
+```c++
+#include <iostream>
+#include <utility>
+
+struct T {};
+int p(const T&) { return 1; }
+int p(T&&) { return 2; }
+
+int main() {
+    auto f = [](auto&& t){ return p(t); };
+
+    T t;
+    assert(f(t) == 1);
+    assert(f(T{}) == 2); // ?
+    assert(f(std::move(t)) == 2); // ?
+}
+```
+
+=== Perfect forwarding
+
+```c++
+struct T {};
+int p(const T&) { return 1; }
+int p(T&&) { return 2; }
+
+int main() {
+    auto f = [](auto&& t){
+        return p(std::forward<decltype(t)>(t));
+    };
+
+    T t;
+    assert(f(t) == 1);
+    assert(f(T{}) == 2);
+    assert(f(std::move(t)) == 2);
+}
+```
+
+
+
+== Section 4
+Capturing
+
+=== Variables in lambda's body
+
+[.small-code]
+```c++
+double global = 10; // OK
+static float global_static = 20; // OK
+
+int f() { return 42; }
+
+int main() {
+    static int local_static = 1; // OK
+    const int integral_const_1 = 2; // OK (if not odr-used)
+
+    const float float_const = 1.0f; // NO
+    const int integral_const_2 = f(); // NO
+
+    auto lambda = [] {
+        std::cout << global
+        << " " << global_static
+        << " " << local_static
+        << " " << integral_const_1
+        << " " << float_const
+        << " " << integral_const_2;
+    };
+    lambda();
+}
+```
+
+=== Capture
+
+```c++
+#include <iostream>
+
+int main() {
+
+    int x = 1;
+    int y = 2;
+
+    auto lambda = [x, y] {
+        return x + y;
+    };
+
+    std::cout << lambda();
+}
+```
+
+=== Capture by value (copy)
+
+```c++
+int main() {
+    int x = 1;
+    auto f = [x](){ return 2*x; }; // explicit capture
+    auto g = [=](){ return 2*x; }; // implicit capture
+    auto h = [i = x](){ return 2*i; }; // with initializer
+}
+```
+
+- Вывод типов при использовании инициализатора отличается
+- В теле лямбды нельзя изменять значения "захваченных" переменных
+
+https://cppinsights.io/s/438d12ec[cppinsights]
+
+=== Capture by value + `mutable`
+
+=== Pack expansion
+Lambdas (required to place in appropiate place)
+
+
+```c++
+template <class... Args>
+auto f(Args... args) {
+    return [args...](auto... another_args){
+        g(args..., another_args...);
+    };
+}
+```
+
+
+```c++
+#include <cassert>
+
+int main() {
+    int x = 1;
+
+    auto f = [x]() mutable { x = 20; return x; };
+    f();
+
+    assert(x == 1);
+}
+```
+
+=== Capture by reference
+
+```c++
+int main() {
+     int x = 1;
+
+     auto f = [&x]() { return 2*x; }; // explicit capture
+     auto g = [&]() { return 2*x; };  // implicit capture
+     auto h = [&i = x]() { return 2*i; }; // with initializer
+}
+```
+
+* Типы выводятся также как для шаблонов
+* Изменение переменной в теле лямбды влиет на значение объекта, ссылка на который, была захвачена
+
+https://cppinsights.io/s/3c16dff4[cppinsights]
+
+=== Capture by const-reference
+
+```c++
+#include <utility>
+
+int main() {
+     int x = 1;
+     auto f = [&x = std::as_const(x)]() { return 2*x; };
+}
+```
+
+=== Combining captures
+
+```c++
+int main() {
+    int x = 1;
+    int y = 2;
+
+    auto f = [x, &y] { return x * y; };
+    auto g = [=, &y] { return x * y; };
+    auto h = [&, x] { return x * y; };
+}
+```
+
+=== Capture members
+
+```c++
+#include <iostream>
+
+struct S {
+    void test() {
+       auto f = [](){
+           std::cout << data_member; // error
+       };
+       f();
+    }
+    int data_member = 42;
+};
+```
+
+=== Capture members
+
+```c++
+#include <iostream>
+
+struct S {
+    void test() {
+       auto f = [](){
+           std::cout << data_member; // error
+       };
+       f();
+    }
+    int data_member = 42;
+};
+```
+Ways:
+
+ [data_member = data_member]
+ [&data_member = data_member]
+ [=]
+ [&]
+ [this]
+ [*this]
+
+=== Capture members (test)
+
+[.small-code]
+```c++
+#include <iostream>
+
+struct S {
+    auto lambda() {
+        return [ ??? ]() { return data_member; };
+    }
+    ~S() { data_member = 0; }
+    int data_member = 10;
+};
+
+auto make_lambda() {
+    S s;
+    return s.lambda();
+}
+
+int main() {
+    auto f = make_lambda();
+    std::cout << f();
+}
+```
+
+Какой из перечисленных ранее способов захвата приведет к UB из-за висячей ссылки (dangling reference)?
+
+=== Capturing movable-only objects
+
+```c++
+#include <memory>
+
+int main() {
+    std::unique_ptr<int> p = std::make_unique<int>(10);
+    auto f = [p]() { return *p; }; // Error
+}
+```
+
+=== Capturing movable-only objects
+
+Без передачи владения:
+```c++
+auto f = [&p]() { return *p; };
+```
+С передачей владения:
+```c++
+auto f = [p = std::move(p)]() { return *p; };
+```
+
+
+== Section 5
+Lambda tricks
+
+=== IILE idiom
+
+Immediately Invoked Lambda Expression
+
+[.small-code]
+```c++
+#include <algorithm>
+#include <vector>
+#include <iostream>
+#include <numeric>
+
+int main() {
+    const std::vector<int> vs = []{
+        std::vector<int> vs(10);
+        std::iota(vs.begin(), vs.end(), 10);
+        return vs;
+    }();
+
+    std::copy(
+        vs.begin(), vs.end(),
+        std::ostream_iterator<int>(std::cout, " "));
+}
+```
+
+Обычно используется для нетривиальной инициализации
+
+=== Lifting
+
+[.small-code]
+```c++
+#include <algorithm>
+#include <vector>
+
+void process(int) {}
+void process(double) {}
+
+int main() {
+    {
+        std::vector<int> ints {1,2,3};
+        std::for_each(ints.begin(), ints.end(), process);
+    }
+
+    {
+        std::vector<double> doubles{1.0, 2.0};
+        std::for_each(doubles.begin(), doubles.end(), process);
+    }
+}
+```
+
+https://en.cppreference.com/w/cpp/algorithm/for_each[for_each documentation]
+
+
+=== Lifting
+
+Проблема выбора нужной перегрузки функции process
+
+[.small-code]
+```c++
+#include <algorithm>
+#include <vector>
+
+void process(int) {}
+void process(double) {}
+
+int main() {
+    {
+        std::vector<int> ints {1,2,3};
+        std::for_each(ints.begin(), ints.end(), process);
+    }
+
+    {
+        std::vector<double> doubles{1.0, 2.0};
+        std::for_each(doubles.begin(), doubles.end(), process);
+    }
+}
+```
+
+
+=== Lifting
+
+Fix using lambda
+
+[.small-code]
+```c++
+#include <algorithm>
+#include <vector>
+
+void process(int) { }
+void process(double) { }
+
+int main() {
+    {
+        std::vector<int> ints {1,2,3};
+        std::for_each(ints.begin(), ints.end(),
+                      [](int x) { process(x); });
+    }
+
+    {
+        std::vector<double> doubles{1.0, 2.0};
+        std::for_each(doubles.begin(), doubles.end(),
+                      [](double x) { process(x); });
+    }
+}
+
+```
+
+=== Lifting
+
+Add macros to generalize
+
+[.small-code]
+```c++
+#include <algorithm>
+#include <vector>
+
+void process(int) { }
+void process(double) { }
+
+#define LIFT(fun) [](auto x) { (fun)(x); }
+
+int main() {
+    {
+        std::vector<int> ints {1,2,3};
+        std::for_each(ints.begin(), ints.end(), LIFT(process));
+    }
+
+    {
+        std::vector<double> doubles{1.0, 2.0};
+        std::for_each(doubles.begin(), doubles.end(), LIFT(process));
+    }
+}
+```
+
+== Section 6
+
+STL functional objects library
+
+https://en.cppreference.com/w/cpp/header/functional[#include <functional>]
+
+=== functional objects library
+
+* `function`
+* `bind`
+* comparisons: `less`, `greater`, etc...
+* ...
+
+=== `std::function`
+
+[.small-code]
+```c++
+#include <functional>
+#include <iostream>
+
+int square(int x) { return x * x; }
+
+void run(const std::function<int(int)>& func, int arg) {
+    std::cout << func(arg) << " ";
+}
+
+struct FuncObj {
+    int operator()(int i) const { return i * i; }
+};
+
+int main() {
+    run(square, 10); // free-function
+
+    run([](int x) { return x; }, 1); // lambda without capture
+
+    run([i = 10](int x) { return i + x; }, 2); // lambda with capture
+
+    run(FuncObj{}, 11); // functor
+}
+```
+
+=== `std::function`
+
+[.small-code]
+```c++
+#include <functional>
+#include <iostream>
+
+struct T {
+    int method(int i) const { return i; }
+};
+
+int main() {
+    T t;
+
+    std::function<int(const T*, int)> f = &T::method;
+    std::cout << f(&t, 1) << " ";
+
+    std::function<int(const T&, int)> g; // may be empty
+    if (!g) { // check emptiness
+        g = &T::method;
+        std::cout << g(t, 2) << " ";
+    }
+}
+```
